@@ -16,6 +16,7 @@ const db = new ToolDb({
   topic: "testnetwork",
 });
 
+// A simple verificator to only allow the creator of the key to modify it
 function groupVerificator(msg: VerificationData<GroupData>): Promise<boolean> {
   return new Promise<boolean>((resolve) => {
     const ownerId = msg.k.slice(6).split("-")[0];
@@ -27,6 +28,7 @@ function groupVerificator(msg: VerificationData<GroupData>): Promise<boolean> {
   });
 }
 
+// Apply to all keys starting with "group-"
 db.addCustomVerification<GroupData>("group-", groupVerificator);
 
 // Just for devtools/debugging

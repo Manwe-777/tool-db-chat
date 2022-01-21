@@ -14,10 +14,15 @@ p {
   flex-direction: column;
 }
 
+.members-list {
+  display: flex;
+  width: 300px;
+  flex-direction: column;
+}
+
 .group-member {
   height: 24px;
   line-height: 24px;
-  width: 100%;
   margin: 4px;
   font-size: 16px;
   background-color: #4e5158;
@@ -25,9 +30,9 @@ p {
 }
 
 .group-name {
+  cursor: pointer;
   height: 32px;
   line-height: 32px;
-  width: 100%;
   background-color: #4e5158;
   margin: 4px;
   font-size: 18px;
@@ -35,12 +40,12 @@ p {
 }
 
 .chat {
-  width: -webkit-fill-available;
+  width: calc(100% - 600px);
   height: 100%;
 }
 
 .chat-messages {
-  margin-left: 16px;
+  margin: 0 16px;
   height: calc(100% - 48px);
   overflow: auto;
   display: flex;
@@ -51,6 +56,7 @@ p {
   color: white;
   text-align: left;
   width: 100%;
+  margin-top: 4px;
 }
 
 .chat-username i {

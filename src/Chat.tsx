@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useReducer, useState } from "react";
+
+import _ from "lodash";
+
 import { sha1 } from "tool-db";
 import getToolDb from "./getToolDb";
 import { GroupData, Message, MessagesState } from "./types";
@@ -99,7 +102,7 @@ export default function Chat() {
     toolDb.getData(`==${memberAdd}`).then((user) => {
       if (user) {
         const key = user.keys.skpub;
-        if (groupData) {
+        if (groupData && !groupData.members.includes(key)) {
           const groupToAdd: GroupData = {
             ...groupData,
             members: [...groupData.members, key],
@@ -159,7 +162,6 @@ export default function Chat() {
   });
 
   chats.sort((a, b) => a.timestamp - b.timestamp);
-  console.log(chats);
 
   return (
     <>
@@ -186,37 +188,6 @@ export default function Chat() {
           <button type="button" onClick={createGroup}>
             Create
           </button>
-        </div>
-
-        <p>Members: </p>
-        <div>
-          {currentGroup !== "" && groupData ? (
-            <>
-              {groupData.members.map((id) => {
-                return (
-                  <div className="group-member" key={`group-member-${id}`}>
-                    {state.names[id]}{" "}
-                    <i>{toolDb.user?.pubKey === id ? "(you)" : ""}</i>
-                  </div>
-                );
-              })}
-              {toolDb.user?.pubKey === groupData.owner ? (
-                <>
-                  <input
-                    value={memberAdd}
-                    onChange={(e) => setMemberAdd(e.currentTarget.value)}
-                  />
-                  <button type="button" onClick={addMember}>
-                    Add member
-                  </button>
-                </>
-              ) : (
-                <></>
-              )}
-            </>
-          ) : (
-            <></>
-          )}
         </div>
       </div>
       <div className="chat">
@@ -261,6 +232,39 @@ export default function Chat() {
         ) : (
           <p>Select or create a group to start</p>
         )}
+      </div>
+      <div className="members-list">
+        <p>Members: </p>
+        <div>
+          {currentGroup !== "" && groupData ? (
+            <>
+              {_.uniq(groupData.members).map((id) => {
+                return (
+                  <div className="group-member" key={`group-member-${id}`}>
+                    {state.names[id]}{" "}
+                    <i>{toolDb.user?.pubKey === id ? "(you)" : ""}</i>
+                    <b>{groupData.owner === id ? " (admin)" : ""}</b>
+                  </div>
+                );
+              })}
+              {toolDb.user?.pubKey === groupData.owner ? (
+                <>
+                  <input
+                    value={memberAdd}
+                    onChange={(e) => setMemberAdd(e.currentTarget.value)}
+                  />
+                  <button type="button" onClick={addMember}>
+                    Add member
+                  </button>
+                </>
+              ) : (
+                <></>
+              )}
+            </>
+          ) : (
+            <></>
+          )}
+        </div>
       </div>
     </>
   );

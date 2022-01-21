@@ -1,14 +1,19 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import "./App.css";
 import Chat from "./Chat";
 import getToolDb from "./getToolDb";
 
 function App() {
+  const [_checkLoop, setCheckLoop] = useState(0);
   const [isLoggedIn, setLoggedIn] = useState(false);
 
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
+
+  useEffect(() => {
+    setInterval(() => setCheckLoop(new Date().getTime()), 250);
+  }, []);
 
   const doLogin = useCallback(() => {
     const toolDb = getToolDb();
@@ -31,8 +36,16 @@ function App() {
     });
   }, [user, pass]);
 
+  const toolDb = getToolDb() as any;
+
+  const connectedPeers = Object.keys(toolDb.network.peerMap).length;
+
   return (
     <div className="wrapper">
+      <div
+        title={`${connectedPeers} peer${connectedPeers > 1 ? "s" : ""} online.`}
+        className={`online-indicator ${connectedPeers > 0 ? "on" : "off"}`}
+      />
       {isLoggedIn ? (
         <Chat />
       ) : (

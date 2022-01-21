@@ -27,3 +27,20 @@ input {
   padding: 0;
   height: 24px;
 }
+
+.online-indicator {
+  width: 16px;
+  height: 16px;
+  border-radius: 16px;
+  position: absolute;
+  left: 16px;
+  top: 16px;
+}
+
+.on {
+  background-color: greenyellow;
+}
+
+.off {
+  background-color: tomato;
+}
