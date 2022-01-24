@@ -20,7 +20,6 @@ export default function Group(props: GroupProps) {
 
   const groupId = decodeURIComponent(groupRoute || "");
 
-  const [allGroups, setAllGroups] = useState<string[]>([]);
   const [joinRequests, setJoinRequests] = useState<Record<string, string>>({});
   const [groupData, setGroupData] = useState<GroupData | null>(null);
 
@@ -29,46 +28,56 @@ export default function Group(props: GroupProps) {
   const toolDb = getToolDb();
 
   useEffect(() => {
+    const listeners: number[] = [];
     if (groupRoute) {
+      // Add listener for the group data
       toolDb.addKeyListener<GroupData>(groupKey, (msg) => {
         if (msg.type === "put") {
           setGroupData(msg.v);
+
+          // Update the members
+          msg.v.members.forEach((id) => {
+            const key = `:${id}.group-${msg.v.id}`;
+
+            toolDb.getData(`:${id}.name`).then((name) => {
+              dispatch({ type: "setName", id, username: name || "" });
+            });
+
+            // Listen for messages of this member
+            const listenerId = toolDb.addKeyListener<Message[]>(key, (m) => {
+              if (m.type === "put") {
+                dispatch({ type: "setMessages", id, messages: m.v });
+              }
+            });
+            listeners.push(listenerId);
+            toolDb.subscribeData(key);
+          });
         }
       });
       toolDb.subscribeData(groupKey);
 
-      toolDb.addKeyListener<any>(`requests-${groupId}`, (msg) => {
-        if (msg.type === "crdt") {
-          const doc = Automerge.load<any>(base64ToBinaryDocument(msg.doc));
-          const newDoc = Automerge.merge<any>(Automerge.init(), doc);
-          setJoinRequests(newDoc);
+      // Add listener for join requests
+      const listenerId = toolDb.addKeyListener<any>(
+        `requests-${groupId}`,
+        (msg) => {
+          if (msg.type === "crdt") {
+            const doc = Automerge.load<any>(base64ToBinaryDocument(msg.doc));
+            const newDoc = Automerge.merge<any>(Automerge.init(), doc);
+            setJoinRequests(newDoc);
+          }
         }
-      });
-
+      );
+      listeners.push(listenerId);
       toolDb.subscribeData(`requests-${groupId}`);
     }
+
+    // Clear listeners
+    return () => {
+      listeners.forEach((id) => {
+        toolDb.removeKeyListener(id);
+      });
+    };
   }, [groupRoute]);
-
-  useEffect(() => {
-    // Add listeners to the keys!
-    // even ours, oh yep
-    if (!groupData) return;
-
-    groupData.members.forEach((id) => {
-      const key = `:${id}.group-${groupData.id}`;
-
-      toolDb.getData(`:${id}.name`).then((name) => {
-        dispatch({ type: "setName", id, username: name || "" });
-      });
-
-      toolDb.addKeyListener<Message[]>(key, (msg) => {
-        if (msg.type === "put") {
-          dispatch({ type: "setMessages", id, messages: msg.v });
-        }
-      });
-      toolDb.subscribeData(key);
-    });
-  }, [groupData]);
 
   const sendMessage = useCallback(
     (msg: string) => {
@@ -107,7 +116,7 @@ export default function Group(props: GroupProps) {
   );
 
   const sendRequest = useCallback(() => {
-    if (toolDb.user && groupRoute) {
+    if (toolDb.user && groupData && groupRoute) {
       const pubKey = toolDb.user.pubKey || "";
       const origDoc = Automerge.init<any>();
 
@@ -122,11 +131,14 @@ export default function Group(props: GroupProps) {
         false
       );
 
-      const newGroups = _.uniq([...allGroups, groupRoute]);
+      const newGroups = _.uniq([
+        ...state.groups,
+        `${groupData.id}-${groupData.name}`,
+      ]);
       toolDb.putData("groups", newGroups, true);
-      setAllGroups(newGroups);
+      dispatch({ type: "setAllGroups", newGroups });
     }
-  }, [allGroups, groupRoute]);
+  }, [state, groupData, groupRoute]);
 
   let chats: Message[] = [];
 

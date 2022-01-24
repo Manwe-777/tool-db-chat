@@ -3,17 +3,17 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { sha1 } from "tool-db";
 import getToolDb from "./getToolDb";
-import { GroupData } from "./types";
+import { GroupData, MessagesState } from "./types";
 
 interface GroupsListProps {
+  state: MessagesState;
   dispatch: React.Dispatch<any>;
 }
 
 export default function GroupsList(props: GroupsListProps) {
-  const { dispatch } = props;
+  const { state, dispatch } = props;
   const navigate = useNavigate();
 
-  const [allGroups, setAllGroups] = useState<string[]>([]);
   const [newGroup, setNewGroup] = useState("");
 
   const toolDb = getToolDb();
@@ -21,7 +21,7 @@ export default function GroupsList(props: GroupsListProps) {
   useEffect(() => {
     toolDb.getData("groups", true).then((groups) => {
       if (groups) {
-        setAllGroups(groups);
+        dispatch({ type: "setAllGroups", groups });
       }
     });
   }, []);
@@ -41,12 +41,12 @@ export default function GroupsList(props: GroupsListProps) {
       })
       .then((d) => {
         if (d) {
-          const newGroups = _.uniq([...allGroups, newGroupKey]);
+          const newGroups = _.uniq([...state.groups, newGroupKey]);
           toolDb.putData("groups", newGroups, true);
-          setAllGroups(newGroups);
+          dispatch({ type: "setAllGroups", newGroups });
         }
       });
-  }, [allGroups, newGroup]);
+  }, [state, newGroup]);
 
   // Change the current group, trigger everything
   const changeGroup = useCallback(
@@ -60,7 +60,7 @@ export default function GroupsList(props: GroupsListProps) {
   return (
     <div className="groups-list">
       <p>Groups: </p>
-      {allGroups.map((name) => {
+      {state.groups.map((name) => {
         return (
           <div
             className="group-name"

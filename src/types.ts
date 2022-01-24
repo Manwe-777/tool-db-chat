@@ -16,4 +16,5 @@ export interface Message {
 export interface MessagesState {
   names: Record<string, string>;
   messages: Record<string, Message[]>;
+  groups: string[];
 }

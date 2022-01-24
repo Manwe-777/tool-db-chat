@@ -8,7 +8,7 @@ import { MessagesState } from "./types";
 import GroupsList from "./GroupsList";
 import Group from "./Group";
 
-const initialState: MessagesState = { names: {}, messages: {} };
+const initialState: MessagesState = { names: {}, messages: {}, groups: [] };
 
 function reducer(state: MessagesState, action: any): MessagesState {
   switch (action.type) {
@@ -19,6 +19,11 @@ function reducer(state: MessagesState, action: any): MessagesState {
           ...state.messages,
           [action.id]: action.messages,
         },
+      };
+    case "setAllGroups":
+      return {
+        ...state,
+        groups: action.groups,
       };
     case "setName":
       return {
@@ -43,7 +48,7 @@ export default function Chat() {
 
   return (
     <>
-      <GroupsList dispatch={dispatch} />
+      <GroupsList dispatch={dispatch} state={state} />
       <Routes>
         <Route path="/group">
           <Route
