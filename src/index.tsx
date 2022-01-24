@@ -3,6 +3,9 @@ import React from "react";
 import ReactDOM from "react-dom";
 import "./index.css";
 import { ToolDb, toolDbWebrtc, VerificationData } from "tool-db";
+
+import { HashRouter } from "react-router-dom";
+
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
 import { GroupData } from "./types";
@@ -22,8 +25,6 @@ function groupVerificator(msg: VerificationData<GroupData>): Promise<boolean> {
     const ownerId = msg.k.slice(6).split("-")[0];
     if (ownerId !== msg.v.owner) {
       resolve(false);
-    } else {
-      resolve(true);
     }
   });
 }
@@ -36,7 +37,9 @@ db.addCustomVerification<GroupData>("group-", groupVerificator);
 
 ReactDOM.render(
   <React.StrictMode>
-    <App />
+    <HashRouter>
+      <App />
+    </HashRouter>
   </React.StrictMode>,
   document.getElementById("root")
 );

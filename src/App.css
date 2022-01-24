@@ -59,6 +59,10 @@ p {
   margin-top: 4px;
 }
 
+.chat-username b {
+  margin-right: 8px;
+}
+
 .chat-username i {
   opacity: 0.5;
 }

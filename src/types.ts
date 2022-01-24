@@ -2,6 +2,7 @@
 export interface GroupData {
   owner: string;
   id: string;
+  name: string;
   members: string[];
 }
 
