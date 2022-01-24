@@ -43,7 +43,7 @@ export default function GroupsList(props: GroupsListProps) {
         if (d) {
           const newGroups = _.uniq([...state.groups, newGroupKey]);
           toolDb.putData("groups", newGroups, true);
-          dispatch({ type: "setAllGroups", newGroups });
+          dispatch({ type: "setAllGroups", groups: newGroups });
         }
       });
   }, [state, newGroup]);
@@ -51,7 +51,6 @@ export default function GroupsList(props: GroupsListProps) {
   // Change the current group, trigger everything
   const changeGroup = useCallback(
     (groupId: string) => {
-      dispatch({ type: "clearMessages" });
       navigate(`/group/${encodeURIComponent(groupId)}`);
     },
     [dispatch]

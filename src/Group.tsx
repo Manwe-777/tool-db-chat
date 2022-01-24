@@ -1,7 +1,7 @@
 import Automerge from "automerge";
 import _ from "lodash";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { base64ToBinaryDocument } from "tool-db";
 import getToolDb from "./getToolDb";
@@ -20,7 +20,7 @@ export default function Group(props: GroupProps) {
 
   const groupId = decodeURIComponent(groupRoute || "");
 
-  const [joinRequests, setJoinRequests] = useState<Record<string, string>>({});
+  const joinRequests = useRef<Automerge.FreezeObject<any>>(Automerge.init());
   const [groupData, setGroupData] = useState<GroupData | null>(null);
 
   const [message, setMessage] = useState("");
@@ -29,6 +29,8 @@ export default function Group(props: GroupProps) {
 
   useEffect(() => {
     const listeners: number[] = [];
+    joinRequests.current = Automerge.init();
+    dispatch({ type: "clearMessages" });
     if (groupRoute) {
       // Add listener for the group data
       toolDb.addKeyListener<GroupData>(groupKey, (msg) => {
@@ -62,8 +64,8 @@ export default function Group(props: GroupProps) {
         (msg) => {
           if (msg.type === "crdt") {
             const doc = Automerge.load<any>(base64ToBinaryDocument(msg.doc));
-            const newDoc = Automerge.merge<any>(Automerge.init(), doc);
-            setJoinRequests(newDoc);
+            const newDoc = Automerge.merge<any>(joinRequests.current, doc);
+            joinRequests.current = newDoc;
           }
         }
       );
@@ -118,16 +120,15 @@ export default function Group(props: GroupProps) {
   const sendRequest = useCallback(() => {
     if (toolDb.user && groupData && groupRoute) {
       const pubKey = toolDb.user.pubKey || "";
-      const origDoc = Automerge.init<any>();
 
-      const docChange = Automerge.change(origDoc, (doc) => {
+      const docChange = Automerge.change(joinRequests.current, (doc) => {
         // eslint-disable-next-line no-param-reassign
         doc[pubKey] = toolDb.user?.name || "";
       });
 
       toolDb.putCrdt(
         `requests-${groupId}`,
-        Automerge.getChanges(origDoc, docChange),
+        Automerge.getChanges(joinRequests.current, docChange),
         false
       );
 
@@ -136,7 +137,7 @@ export default function Group(props: GroupProps) {
         `${groupData.id}-${groupData.name}`,
       ]);
       toolDb.putData("groups", newGroups, true);
-      dispatch({ type: "setAllGroups", newGroups });
+      dispatch({ type: "setAllGroups", groups: newGroups });
     }
   }, [state, groupData, groupRoute]);
 
@@ -211,10 +212,10 @@ export default function Group(props: GroupProps) {
               {toolDb.user?.pubKey === groupData.owner ? (
                 <>
                   <p>Join requests: </p>
-                  {Object.keys(joinRequests)
+                  {Object.keys(joinRequests.current)
                     .filter((id) => !groupData.members.includes(id))
                     .map((id) => {
-                      const name = joinRequests[id];
+                      const name = joinRequests.current[id];
                       return (
                         <div
                           className="group-member"
