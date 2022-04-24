@@ -18,6 +18,7 @@ export default function GroupsList(props: GroupsListProps) {
 
   const toolDb = getToolDb();
 
+  // Set our groups index
   useEffect(() => {
     toolDb.getData("groups", true).then((groups) => {
       if (groups) {
@@ -26,21 +27,28 @@ export default function GroupsList(props: GroupsListProps) {
     });
   }, []);
 
+  // Create a new group
   const createGroup = useCallback(() => {
+    // Use the group name and our pubkey to get the hash/id
+    // The group id will be unique for us, in case someone else creates a new group with the same name
+    const adress = toolDb.getPubKey() || "";
+    const groupId = sha1(newGroup + new Date().getTime() + adress);
     setNewGroup("");
-    const pubKey = toolDb.user?.pubKey || "";
-    const groupId = sha1(newGroup + new Date().getTime() + pubKey);
 
+    // The key contains the name as well, for UI display without extra queries
     const newGroupKey = `${groupId}-${newGroup}`;
+
+    // Use the frozen namespace for the metadata
     toolDb
       .putData<GroupData>(`==${groupId}`, {
-        owner: pubKey,
+        owners: [adress],
         name: newGroup,
         id: groupId,
-        members: [toolDb.user?.pubKey || ""],
+        members: [toolDb.getPubKey() || ""],
       })
       .then((d) => {
         if (d) {
+          // add this group key to our index!
           const newGroups = _.uniq([...state.groups, newGroupKey]);
           toolDb.putData("groups", newGroups, true);
           dispatch({ type: "setAllGroups", groups: newGroups });

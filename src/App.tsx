@@ -19,8 +19,10 @@ function App() {
     const toolDb = getToolDb();
     toolDb.signIn(user, pass).then((u) => {
       if (u) {
-        toolDb.putData("name", user, true);
-        setLoggedIn(true);
+        setTimeout(() => {
+          toolDb.putData("name", user, true);
+          setLoggedIn(true);
+        }, 500);
       }
     });
   }, [user, pass]);
@@ -30,8 +32,14 @@ function App() {
     toolDb.signUp(user, pass).then((u) => {
       console.log(u);
       if (u) {
-        toolDb.putData("name", user, true);
-        setLoggedIn(true);
+        toolDb.signIn(user, pass).then((acc) => {
+          if (acc) {
+            setTimeout(() => {
+              toolDb.putData("name", user, true);
+              setLoggedIn(true);
+            }, 500);
+          }
+        });
       }
     });
   }, [user, pass]);

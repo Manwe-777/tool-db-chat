@@ -50,6 +50,7 @@ export default function Chat() {
     <>
       <GroupsList dispatch={dispatch} state={state} />
       <Routes>
+        <Route path="/" element={<></>} />
         <Route path="/group">
           <Route
             path=":groupRoute"
