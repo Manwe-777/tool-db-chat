@@ -80,7 +80,7 @@ export default function Group(props: GroupProps) {
         `requests-${groupId}`,
         (msg) => {
           if (msg.type === "crdt") {
-            let doc = Automerge.load(hexToUint8(msg.doc) as any);
+            const doc = Automerge.load(hexToUint8(msg.doc) as any);
             const newDoc = Automerge.merge<any>(joinRequests.current, doc);
             joinRequests.current = newDoc;
           }

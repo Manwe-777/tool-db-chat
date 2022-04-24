@@ -2,7 +2,7 @@
 import React from "react";
 import ReactDOM from "react-dom";
 import "./index.css";
-import { ToolDb, toolDbWebrtc, VerificationData } from "tool-db";
+import { ToolDb, toolDbWebrtc } from "tool-db";
 
 import { HashRouter } from "react-router-dom";
 
