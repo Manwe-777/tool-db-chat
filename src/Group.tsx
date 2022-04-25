@@ -37,7 +37,7 @@ export default function Group(props: GroupProps) {
         toolDb.getData(`:${id}.name`).then((name) => {
           dispatch({ type: "setName", id, username: name || "" });
         });
-      
+
         // Listen for messages of this member
         const listenerId = toolDb.addKeyListener<Message[]>(key, (m) => {
           if (m.type === "put") {

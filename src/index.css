@@ -35,6 +35,19 @@ input {
   position: absolute;
   left: 16px;
   top: 16px;
+  font-family: monospace;
+}
+
+.debugger-list {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  top: 40px;
+  left: 16px;
+  font-family: monospace;
+  text-align: left;
+  line-height: 16px;
+  font-size: 12px;
 }
 
 .on {

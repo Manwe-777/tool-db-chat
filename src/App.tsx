@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import "./App.css";
 import Chat from "./Chat";
 import getToolDb from "./getToolDb";
+import WebRtcDebug from "./WebRtcDebug";
 
 function App() {
   const [_checkLoop, setCheckLoop] = useState(0);
@@ -44,16 +45,9 @@ function App() {
     });
   }, [user, pass]);
 
-  const toolDb = getToolDb() as any;
-
-  const connectedPeers = Object.keys(toolDb.network.peerMap).length;
-
   return (
     <div className="wrapper">
-      <div
-        title={`${connectedPeers} peer${connectedPeers > 1 ? "s" : ""} online.`}
-        className={`online-indicator ${connectedPeers > 0 ? "on" : "off"}`}
-      />
+      <WebRtcDebug />
       {isLoggedIn ? (
         <Chat />
       ) : (
