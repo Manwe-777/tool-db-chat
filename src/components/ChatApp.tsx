@@ -4,13 +4,14 @@ import { Routes, Route } from "react-router-dom";
 
 import _ from "lodash";
 
-import { MessagesState } from "./types";
+import { MessagesState } from "../types";
 import GroupsList from "./GroupsList";
 import Group from "./Group";
 
 const initialState: MessagesState = { names: {}, messages: {}, groups: [] };
 
 function reducer(state: MessagesState, action: any): MessagesState {
+  // console.log("DISPACTH", action.type, action);
   switch (action.type) {
     case "setMessages":
       return {
@@ -43,7 +44,7 @@ function reducer(state: MessagesState, action: any): MessagesState {
   }
 }
 
-export default function Chat() {
+export default function ChatApp() {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   return (

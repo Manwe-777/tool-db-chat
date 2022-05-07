@@ -1,11 +1,13 @@
-import Automerge from "automerge";
+/* eslint-disable react/no-array-index-key */
 import _ from "lodash";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { hexToUint8 } from "tool-db";
-import getToolDb from "./getToolDb";
-import { GroupData, Message, MessagesState } from "./types";
+
+import { MapCrdt } from "tool-db";
+import ChatMessage from "./ChatMessage";
+import getToolDb from "../utils/getToolDb";
+import { GroupData, Message, MessagesState } from "../types";
 
 interface GroupProps {
   state: MessagesState;
@@ -15,39 +17,44 @@ interface GroupProps {
 export default function Group(props: GroupProps) {
   const { state, dispatch } = props;
   const { groupRoute } = useParams();
+  const toolDb = getToolDb();
 
   const groupKey = `==${decodeURIComponent(groupRoute || "")}`;
 
   const groupId = decodeURIComponent(groupRoute || "");
 
-  const joinRequests = useRef<Automerge.FreezeObject<any>>(Automerge.init());
+  const joinRequests = useRef<MapCrdt<string>>(
+    new MapCrdt<string>(toolDb.getAddress() || "")
+  );
   const [groupData, setGroupData] = useState<GroupData | null>(null);
 
   const [message, setMessage] = useState("");
-
-  const toolDb = getToolDb();
 
   const setGroupDataWrapper = useCallback(
     (value: GroupData, listeners: number[]) => {
       setGroupData(value);
 
       // Update the members
-      value.members.forEach((id) => {
-        const key = `:${id}.group-${value.id}`;
-        toolDb.getData(`:${id}.name`).then((name) => {
-          dispatch({ type: "setName", id, username: name || "" });
+      value.members.forEach((memberAddress) => {
+        const key = `:${memberAddress}.group-${value.id}`;
+        toolDb.getData(`:${memberAddress}.name`).then((name) => {
+          dispatch({
+            type: "setName",
+            id: memberAddress,
+            username: name || "",
+          });
         });
 
         // Listen for messages of this member
         const listenerId = toolDb.addKeyListener<Message[]>(key, (m) => {
           if (m.type === "put") {
-            dispatch({ type: "setMessages", id, messages: m.v });
+            dispatch({ type: "setMessages", id: memberAddress, messages: m.v });
           }
         });
         listeners.push(listenerId);
 
         // Subscribe only if its not our data
-        if (id !== toolDb.getPubKey()) {
+        if (memberAddress !== toolDb.getAddress()) {
           toolDb.subscribeData(key);
         }
 
@@ -59,40 +66,39 @@ export default function Group(props: GroupProps) {
 
   useEffect(() => {
     const listeners: number[] = [];
-    joinRequests.current = Automerge.init();
+
     dispatch({ type: "clearMessages" });
     if (groupRoute) {
       // Add listener for the group data
-      toolDb.addKeyListener<GroupData>(groupKey, (msg) => {
-        if (msg.type === "put") {
-          setGroupDataWrapper(msg.v, listeners);
-        }
-      });
-      toolDb.subscribeData(groupKey);
-      toolDb.getData<GroupData>(groupKey).then((d) => {
-        if (d) {
-          setGroupDataWrapper(d, listeners);
-        }
-      });
-
-      // Add listener for join requests
-      const listenerId = toolDb.addKeyListener<any>(
-        `requests-${groupId}`,
+      const groupKeyListenerId = toolDb.addKeyListener<GroupData>(
+        groupKey,
         (msg) => {
-          if (msg.type === "crdt") {
-            const doc = Automerge.load(hexToUint8(msg.doc) as any);
-            const newDoc = Automerge.merge<any>(joinRequests.current, doc);
-            joinRequests.current = newDoc;
+          if (msg.type === "put") {
+            setGroupDataWrapper(msg.v, listeners);
           }
         }
       );
-      listeners.push(listenerId);
+      listeners.push(groupKeyListenerId);
+      toolDb.subscribeData(groupKey);
+
+      // Add listener for join requests
+      const requestsListenerId = toolDb.addKeyListener<any>(
+        `requests-${groupId}`,
+        (msg) => {
+          if (msg.type === "crdtPut") {
+            joinRequests.current.mergeChanges(msg.v);
+          }
+        }
+      );
+
+      listeners.push(requestsListenerId);
       toolDb.subscribeData(`requests-${groupId}`);
-      toolDb.getCrdt(`requests-${groupId}`);
+      toolDb.getCrdt(`requests-${groupId}`, joinRequests.current);
     }
 
     // Clear listeners
     return () => {
+      console.log("clearing listeners: ", listeners);
       listeners.forEach((id) => {
         toolDb.removeKeyListener(id);
       });
@@ -101,7 +107,7 @@ export default function Group(props: GroupProps) {
 
   const sendMessage = useCallback(
     (msg: string) => {
-      const address = toolDb.getPubKey() || "";
+      const address = toolDb.getAddress() || "";
 
       if (!groupData?.members.includes(address)) return;
 
@@ -111,12 +117,16 @@ export default function Group(props: GroupProps) {
         t: timestamp,
       };
 
-      const newMessagesArray = [...(state.messages[address] || []), newMessage];
+      // Dont push to the state directly!
+      const newMessagesArray = [...(state.messages[address] || [])];
+      newMessagesArray.push(newMessage);
+
       dispatch({
         type: "setMessages",
         id: address,
         messages: newMessagesArray,
       });
+
       toolDb.putData<Message[]>(
         `group-${groupData.id}`,
         newMessagesArray,
@@ -140,19 +150,12 @@ export default function Group(props: GroupProps) {
   );
 
   const sendRequest = useCallback(() => {
-    if (toolDb.getPubKey() && groupData && groupRoute) {
-      const address = toolDb.getPubKey() || "";
+    if (toolDb.getAddress() && groupData && groupRoute) {
+      const address = toolDb.getAddress() || "";
 
-      const docChange = Automerge.change(joinRequests.current, (doc) => {
-        // eslint-disable-next-line no-param-reassign
-        doc[address] = toolDb.getUsername() || "";
-      });
+      joinRequests.current.SET(address, toolDb.getUsername() || "");
 
-      toolDb.putCrdt(
-        `requests-${groupId}`,
-        Automerge.getChanges(joinRequests.current, docChange),
-        false
-      );
+      toolDb.putCrdt(`requests-${groupId}`, joinRequests.current, false);
 
       const newGroups = _.uniq([
         ...state.groups,
@@ -185,19 +188,12 @@ export default function Group(props: GroupProps) {
             <div className="chat-messages">
               {chats.map((msg, i) => {
                 return (
-                  <>
-                    {i === 0 || msg.u !== chats[i - 1].u ? (
-                      <div className="chat-username">
-                        <b>{msg.u}</b>
-                        <i>{new Date(msg.t).toDateString()}</i>
-                      </div>
-                    ) : (
-                      <></>
-                    )}
-                    <div className="chat-message" key={`message-${msg.t}`}>
-                      {msg.m}
-                    </div>
-                  </>
+                  <ChatMessage
+                    key={`chat-message-${i}`}
+                    index={i}
+                    message={msg}
+                    prevMessage={chats[i - i]}
+                  />
                 );
               })}
             </div>
@@ -222,19 +218,19 @@ export default function Group(props: GroupProps) {
                 return (
                   <div className="group-member" key={`group-member-${id}`}>
                     {state.names[id]}
-                    <i>{toolDb.getPubKey() === id ? "(you)" : ""}</i>
+                    <i>{toolDb.getAddress() === id ? "(you)" : ""}</i>
                     <b>{groupData.owners.includes(id) ? " (admin)" : ""}</b>
                   </div>
                 );
               })}
 
-              {groupData.owners.includes(toolDb.getPubKey() || "") ? (
+              {groupData.owners.includes(toolDb.getAddress() || "") ? (
                 <>
                   <p>Join requests: </p>
-                  {Object.keys(joinRequests.current)
+                  {Object.keys(joinRequests.current.value)
                     .filter((id) => !groupData.members.includes(id))
                     .map((id) => {
-                      const name = joinRequests.current[id];
+                      const name = joinRequests.current.value[id];
                       return (
                         <div
                           className="group-member"

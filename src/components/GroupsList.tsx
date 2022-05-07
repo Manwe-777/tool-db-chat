@@ -2,8 +2,8 @@ import _ from "lodash";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { sha1 } from "tool-db";
-import getToolDb from "./getToolDb";
-import { GroupData, MessagesState } from "./types";
+import getToolDb from "../utils/getToolDb";
+import { GroupData, MessagesState } from "../types";
 
 interface GroupsListProps {
   state: MessagesState;
@@ -31,7 +31,7 @@ export default function GroupsList(props: GroupsListProps) {
   const createGroup = useCallback(() => {
     // Use the group name and our pubkey to get the hash/id
     // The group id will be unique for us, in case someone else creates a new group with the same name
-    const adress = toolDb.getPubKey() || "";
+    const adress = toolDb.getAddress() || "";
     const groupId = sha1(newGroup + new Date().getTime() + adress);
     setNewGroup("");
 
@@ -44,7 +44,7 @@ export default function GroupsList(props: GroupsListProps) {
         owners: [adress],
         name: newGroup,
         id: groupId,
-        members: [toolDb.getPubKey() || ""],
+        members: [toolDb.getAddress() || ""],
       })
       .then((d) => {
         if (d) {

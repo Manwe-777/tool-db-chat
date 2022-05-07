@@ -2,13 +2,13 @@
 import React from "react";
 import ReactDOM from "react-dom";
 import "./index.css";
-import { ToolDb, toolDbWebrtc } from "tool-db";
+import { ToolDb, toolDbWebrtc, VerificationData } from "tool-db";
 
 import { HashRouter } from "react-router-dom";
 
-import App from "./App";
+import { MapChanges } from "tool-db/dist/crdt/mapCrdt";
+import App from "./components/App";
 import reportWebVitals from "./reportWebVitals";
-// import { GroupData } from "./types";
 
 // Initialize tooldb outside of react to avoid unpleasant side effects
 // Especially with hot module reloading while testing
@@ -23,18 +23,26 @@ db.on("message", (msg) => {
   console.warn(msg.type, msg.key || msg.k);
 });
 
-// // A simple verificator to only allow the creator of the key to modify it
-// function groupVerificator(msg: VerificationData<GroupData>, prev: GroupData | undefined): Promise<boolean> {
-//   return new Promise<boolean>((resolve) => {
-//     const ownerId = msg.k.slice(6).split("-")[0];
-//     if (ownerId !== msg.v.owner || ownerId !== msg.a || (prev && prev.owner !== msg.v.owner)) {
-//       resolve(false);
-//     }
-//   });
-// }
+// A simple verificator to only allow insertions and not deletions
+function requestsVerificator(
+  msg: VerificationData<MapChanges<string>[]>
+): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    let isValid = true;
+    // Iterate over the crdt changes to find deletions, if any
+    msg.v.forEach((ch) => {
+      if (ch.t === "DEL") isValid = false;
+    });
+    console.log("HI MOM IM VERIFY");
+    resolve(isValid);
+  });
+}
 
 // // Apply to all keys starting with "group-"
-// db.addCustomVerification<GroupData>("group-", groupVerificator);
+db.addCustomVerification<MapChanges<string>[]>(
+  "requests-",
+  requestsVerificator
+);
 
 // Just for devtools/debugging
 (window as any).toolDb = db;

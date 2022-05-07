@@ -1,6 +1,6 @@
 import { useEffect, useReducer } from "react";
 
-import getToolDb from "./getToolDb";
+import getToolDb from "../utils/getToolDb";
 
 const initialState: any = { lastMessage: {} };
 
