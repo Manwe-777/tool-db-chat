@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 /* eslint-disable react/no-array-index-key */
 import _ from "lodash";
 
@@ -73,18 +74,18 @@ export default function Group(props: GroupProps) {
       const groupKeyListenerId = toolDb.addKeyListener<GroupData>(
         groupKey,
         (msg) => {
-          if (msg.type === "put") {
-            setGroupDataWrapper(msg.v, listeners);
-          }
+          setGroupDataWrapper(msg.v, listeners);
         }
       );
       listeners.push(groupKeyListenerId);
       toolDb.subscribeData(groupKey);
+      toolDb.getData(groupKey);
 
       // Add listener for join requests
       const requestsListenerId = toolDb.addKeyListener<any>(
         `requests-${groupId}`,
         (msg) => {
+          console.warn(msg);
           if (msg.type === "crdtPut") {
             joinRequests.current.mergeChanges(msg.v);
           }
@@ -149,23 +150,41 @@ export default function Group(props: GroupProps) {
     [groupRoute, groupData]
   );
 
+  function checkIfWeJoined() {
+    // Check if we asked this group to join already
+    return (
+      joinRequests.current
+        .getChanges()
+        .filter((ch) => ch.k === toolDb.getAddress()).length !== 0
+    );
+  }
+
+  function areWeOwners() {
+    // Check if we are the group owners
+    return groupData?.owners.includes(toolDb.getAddress() || "") || false;
+  }
+
   const sendRequest = useCallback(() => {
     if (toolDb.getAddress() && groupData && groupRoute) {
       const address = toolDb.getAddress() || "";
 
-      joinRequests.current.SET(address, toolDb.getUsername() || "");
+      // Check if we already asked to join this group
+      if (checkIfWeJoined() === false) {
+        joinRequests.current.SET(address, toolDb.getUsername() || "");
 
-      toolDb.putCrdt(`requests-${groupId}`, joinRequests.current, false);
+        toolDb.putCrdt(`requests-${groupId}`, joinRequests.current, false);
 
-      const newGroups = _.uniq([
-        ...state.groups,
-        `${groupData.id}-${groupData.name}`,
-      ]);
-      toolDb.putData("groups", newGroups, true);
-      dispatch({ type: "setAllGroups", groups: newGroups });
+        const newGroups = _.uniq([
+          ...state.groups,
+          `${groupData.id}-${groupData.name}`,
+        ]);
+        toolDb.putData("groups", newGroups, true);
+        dispatch({ type: "setAllGroups", groups: newGroups });
+      }
     }
-  }, [state, groupData, groupRoute]);
+  }, [joinRequests.current, state, groupData, groupRoute]);
 
+  // Get all chats and sort them
   let chats: Message[] = [];
 
   Object.keys(state.messages).forEach((id) => {
@@ -192,7 +211,7 @@ export default function Group(props: GroupProps) {
                     key={`chat-message-${i}`}
                     index={i}
                     message={msg}
-                    prevMessage={chats[i - i]}
+                    prevMessage={chats[i - 1]}
                   />
                 );
               })}
@@ -224,7 +243,7 @@ export default function Group(props: GroupProps) {
                 );
               })}
 
-              {groupData.owners.includes(toolDb.getAddress() || "") ? (
+              {areWeOwners() === true ? (
                 <>
                   <p>Join requests: </p>
                   {Object.keys(joinRequests.current.value)
@@ -243,9 +262,18 @@ export default function Group(props: GroupProps) {
                     })}
                 </>
               ) : (
+                <></>
+              )}
+              {areWeOwners() === false && checkIfWeJoined() === false ? (
                 <button type="button" onClick={sendRequest}>
                   Request join
                 </button>
+              ) : areWeOwners() === false ? (
+                <p>
+                  <i>You already requested to join this group</i>
+                </p>
+              ) : (
+                <></>
               )}
             </div>
           </div>
