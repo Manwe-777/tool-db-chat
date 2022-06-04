@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { MapCrdt } from "tool-db";
+import { MapChanges } from "tool-db/dist/crdt/mapCrdt";
 import ChatMessage from "./ChatMessage";
 import getToolDb from "../utils/getToolDb";
 import { GroupData, Message, MessagesState } from "../types";
@@ -48,9 +49,7 @@ export default function Group(props: GroupProps) {
 
         // Listen for messages of this member
         const listenerId = toolDb.addKeyListener<Message[]>(key, (m) => {
-          if (m.type === "put") {
-            dispatch({ type: "setMessages", id: memberAddress, messages: m.v });
-          }
+          dispatch({ type: "setMessages", id: memberAddress, messages: m.v });
         });
         listeners.push(listenerId);
 
@@ -82,13 +81,11 @@ export default function Group(props: GroupProps) {
       toolDb.getData(groupKey);
 
       // Add listener for join requests
-      const requestsListenerId = toolDb.addKeyListener<any>(
+      const requestsListenerId = toolDb.addKeyListener<MapChanges<string>[]>(
         `requests-${groupId}`,
         (msg) => {
           console.warn(msg);
-          if (msg.type === "crdtPut") {
-            joinRequests.current.mergeChanges(msg.v);
-          }
+          joinRequests.current.mergeChanges(msg.v);
         }
       );
 
