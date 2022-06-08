@@ -1,40 +1,18 @@
-import { useEffect, useReducer } from "react";
-
+import { useEffect, useState } from "react";
 import getToolDb from "../utils/getToolDb";
 
-const initialState: any = { lastMessage: {} };
-
-function reducer(state: any, action: any): any {
-  switch (action.type) {
-    case "setMessage":
-      return {
-        ...state,
-        lastMessage: {
-          ...state.lastMessage,
-          [action.id]: new Date().getTime(),
-        },
-      };
-    default:
-      throw new Error();
-  }
-}
-
 export default function WebRtcDebug() {
-  const [state, dispatch] = useReducer(reducer, initialState);
   const toolDb = getToolDb();
 
-  useEffect(() => {
-    toolDb.on("message", (msg) => {
-      console.log(msg);
-      if (msg.to) {
-        msg.to.forEach((k: any) => {
-          dispatch({ type: "setMessage", id: k.slice(-12) });
-        });
-      }
-    });
-  }, []);
-
   const connectedPeers = Object.keys((toolDb.network as any).peerMap).length;
+
+  const [_update, setUpdate] = useState(0);
+
+  useEffect(() => {
+    setInterval(() => {
+      setUpdate(new Date().getTime());
+    }, 200);
+  }, []);
 
   return (
     <>
@@ -51,15 +29,7 @@ export default function WebRtcDebug() {
         </div>
         {Object.keys((toolDb.network as any).peerMap).map((key) => {
           return (
-            <div
-              style={{
-                color:
-                  new Date().getTime() - state.lastMessage[key] < 500
-                    ? "white"
-                    : "gray",
-              }}
-              key={key}
-            >
+            <div style={{ color: "white" }} key={key}>
               {key.slice(-12)}
             </div>
           );

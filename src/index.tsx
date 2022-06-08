@@ -10,6 +10,9 @@ import { MapChanges } from "tool-db/dist/crdt/mapCrdt";
 import App from "./components/App";
 import reportWebVitals from "./reportWebVitals";
 
+// eslint-disable-next-line camelcase
+import init, { eth_recover } from "./hello_wasm";
+
 // Initialize tooldb outside of react to avoid unpleasant side effects
 // Especially with hot module reloading while testing
 const db = new ToolDb({
@@ -19,8 +22,10 @@ const db = new ToolDb({
   topic: "testnetwork",
 });
 
-db.on("message", (msg) => {
-  console.warn(msg.type, msg.key || msg.k);
+init().then(() => {
+  db.recoverAddress = (msg: string, sig: string) => {
+    return eth_recover(sig, msg);
+  };
 });
 
 // A simple verificator to only allow insertions and not deletions
