@@ -20,7 +20,7 @@ const db = new ToolDb({
 });
 
 // A simple verificator to only allow insertions and not deletions
-function _requestsVerificator(
+function requestsVerificator(
   msg: VerificationData<MapChanges<string>[]>
 ): Promise<boolean> {
   return new Promise<boolean>((resolve) => {
@@ -34,10 +34,10 @@ function _requestsVerificator(
 }
 
 // // Apply to all keys starting with "group-"
-// db.addCustomVerification<MapChanges<string>[]>(
-//   "requests-",
-//   requestsVerificator
-// );
+db.addCustomVerification<MapChanges<string>[]>(
+  "requests-",
+  requestsVerificator
+);
 
 // Just for devtools/debugging
 (window as any).toolDb = db;
