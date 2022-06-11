@@ -8,6 +8,7 @@ interface ChatMessageProps {
 
 export default function ChatMessage(props: ChatMessageProps) {
   const { message, index, prevMessage } = props;
+
   return (
     <>
       {index === 0 || message.u !== prevMessage?.u ? (

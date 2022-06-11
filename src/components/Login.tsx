@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import getPublicKey from "../utils/getPublicKey";
 import getToolDb from "../utils/getToolDb";
 
 interface LoginProps {
@@ -17,6 +18,7 @@ export default function Login(props: LoginProps) {
       if (u) {
         setTimeout(() => {
           toolDb.putData("name", user, true);
+          toolDb.putData("pubKey", getPublicKey(), true);
           setLoggedIn(true);
         }, 500);
       }
@@ -32,6 +34,7 @@ export default function Login(props: LoginProps) {
           if (acc) {
             setTimeout(() => {
               toolDb.putData("name", user, true);
+              toolDb.putData("pubKey", getPublicKey(), true);
               setLoggedIn(true);
             }, 500);
           }
@@ -39,6 +42,7 @@ export default function Login(props: LoginProps) {
       }
     });
   }, [user, pass]);
+
   return (
     <div className="login">
       <label>User:</label>

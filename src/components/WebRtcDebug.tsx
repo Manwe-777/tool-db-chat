@@ -1,37 +1,16 @@
-import { useEffect, useReducer } from "react";
+import { useEffect, useState } from "react";
 
 import getToolDb from "../utils/getToolDb";
 
-const initialState: any = { lastMessage: {} };
-
-function reducer(state: any, action: any): any {
-  switch (action.type) {
-    case "setMessage":
-      return {
-        ...state,
-        lastMessage: {
-          ...state.lastMessage,
-          [action.id]: new Date().getTime(),
-        },
-      };
-    default:
-      throw new Error();
-  }
-}
-
 export default function WebRtcDebug() {
-  const [state, dispatch] = useReducer(reducer, initialState);
   const toolDb = getToolDb();
 
+  const [_refresh, setRefresh] = useState(0);
+
   useEffect(() => {
-    toolDb.on("message", (msg) => {
-      console.log(msg);
-      if (msg.to) {
-        msg.to.forEach((k: any) => {
-          dispatch({ type: "setMessage", id: k.slice(-12) });
-        });
-      }
-    });
+    setInterval(() => {
+      setRefresh(new Date().getTime());
+    }, 200);
   }, []);
 
   const connectedPeers = Object.keys((toolDb.network as any).peerMap).length;
@@ -53,10 +32,7 @@ export default function WebRtcDebug() {
           return (
             <div
               style={{
-                color:
-                  new Date().getTime() - state.lastMessage[key] < 500
-                    ? "white"
-                    : "gray",
+                color: "white",
               }}
               key={key}
             >

@@ -19,12 +19,8 @@ const db = new ToolDb({
   topic: "testnetwork",
 });
 
-db.on("message", (msg) => {
-  console.warn(msg.type, msg.key || msg.k);
-});
-
 // A simple verificator to only allow insertions and not deletions
-function requestsVerificator(
+function _requestsVerificator(
   msg: VerificationData<MapChanges<string>[]>
 ): Promise<boolean> {
   return new Promise<boolean>((resolve) => {
@@ -33,16 +29,15 @@ function requestsVerificator(
     msg.v.forEach((ch) => {
       if (ch.t === "DEL") isValid = false;
     });
-    console.log("HI MOM IM VERIFY");
     resolve(isValid);
   });
 }
 
 // // Apply to all keys starting with "group-"
-db.addCustomVerification<MapChanges<string>[]>(
-  "requests-",
-  requestsVerificator
-);
+// db.addCustomVerification<MapChanges<string>[]>(
+//   "requests-",
+//   requestsVerificator
+// );
 
 // Just for devtools/debugging
 (window as any).toolDb = db;

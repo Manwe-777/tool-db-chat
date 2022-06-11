@@ -6,18 +6,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { MapCrdt } from "tool-db";
+
 import { MapChanges } from "tool-db/dist/crdt/mapCrdt";
 import ChatMessage from "./ChatMessage";
 import getToolDb from "../utils/getToolDb";
-import { GroupData, Message, MessagesState } from "../types";
+import { GroupData, GlobalState, GroupsList, Message } from "../types";
+import { AllActions } from "../state/actions";
 
 interface GroupProps {
-  state: MessagesState;
-  dispatch: React.Dispatch<any>;
+  state: GlobalState;
+  sendMessage: (groupId: string, message: string) => void;
+  dispatch: React.Dispatch<AllActions>;
 }
 
 export default function Group(props: GroupProps) {
-  const { state, dispatch } = props;
+  const { state, sendMessage, dispatch } = props;
   const { groupRoute } = useParams();
   const toolDb = getToolDb();
 
@@ -28,127 +31,12 @@ export default function Group(props: GroupProps) {
   const joinRequests = useRef<MapCrdt<string>>(
     new MapCrdt<string>(toolDb.getAddress() || "")
   );
-  const [groupData, setGroupData] = useState<GroupData | null>(null);
 
+  const [_refresh, setRefresh] = useState(0);
   const [message, setMessage] = useState("");
 
-  const setGroupDataWrapper = useCallback(
-    (value: GroupData, listeners: number[]) => {
-      setGroupData(value);
-
-      // Update the members
-      value.members.forEach((memberAddress) => {
-        const key = `:${memberAddress}.group-${value.id}`;
-        toolDb.getData(`:${memberAddress}.name`).then((name) => {
-          dispatch({
-            type: "setName",
-            id: memberAddress,
-            username: name || "",
-          });
-        });
-
-        // Listen for messages of this member
-        const listenerId = toolDb.addKeyListener<Message[]>(key, (m) => {
-          dispatch({ type: "setMessages", id: memberAddress, messages: m.v });
-        });
-        listeners.push(listenerId);
-
-        // Subscribe only if its not our data
-        if (memberAddress !== toolDb.getAddress()) {
-          toolDb.subscribeData(key);
-        }
-
-        toolDb.getData(key);
-      });
-    },
-    []
-  );
-
-  useEffect(() => {
-    const listeners: number[] = [];
-
-    dispatch({ type: "clearMessages" });
-    if (groupRoute) {
-      // Add listener for the group data
-      const groupKeyListenerId = toolDb.addKeyListener<GroupData>(
-        groupKey,
-        (msg) => {
-          setGroupDataWrapper(msg.v, listeners);
-        }
-      );
-      listeners.push(groupKeyListenerId);
-      toolDb.subscribeData(groupKey);
-      toolDb.getData(groupKey);
-
-      // Add listener for join requests
-      const requestsListenerId = toolDb.addKeyListener<MapChanges<string>[]>(
-        `requests-${groupId}`,
-        (msg) => {
-          console.warn(msg);
-          joinRequests.current.mergeChanges(msg.v);
-        }
-      );
-
-      listeners.push(requestsListenerId);
-      toolDb.subscribeData(`requests-${groupId}`);
-      toolDb.getCrdt(`requests-${groupId}`, joinRequests.current);
-    }
-
-    // Clear listeners
-    return () => {
-      console.log("clearing listeners: ", listeners);
-      listeners.forEach((id) => {
-        toolDb.removeKeyListener(id);
-      });
-    };
-  }, [groupRoute]);
-
-  const sendMessage = useCallback(
-    (msg: string) => {
-      const address = toolDb.getAddress() || "";
-
-      if (!groupData?.members.includes(address)) return;
-
-      const timestamp = new Date().getTime();
-      const newMessage = {
-        m: msg,
-        t: timestamp,
-      };
-
-      // Dont push to the state directly!
-      const newMessagesArray = [...(state.messages[address] || [])];
-      newMessagesArray.push(newMessage);
-
-      dispatch({
-        type: "setMessages",
-        id: address,
-        messages: newMessagesArray,
-      });
-
-      toolDb.putData<Message[]>(
-        `group-${groupData.id}`,
-        newMessagesArray,
-        true
-      );
-    },
-    [groupData, message, state]
-  );
-
-  const addMember = useCallback(
-    (id: string) => {
-      if (groupData && groupRoute && !groupData.members.includes(id)) {
-        const groupToAdd: GroupData = {
-          ...groupData,
-          members: [...groupData.members, id],
-        };
-        toolDb.putData<GroupData>(groupKey, groupToAdd);
-      }
-    },
-    [groupRoute, groupData]
-  );
-
+  // Check if we asked this group to join already
   function checkIfWeJoined() {
-    // Check if we asked this group to join already
     return (
       joinRequests.current
         .getChanges()
@@ -156,13 +44,67 @@ export default function Group(props: GroupProps) {
     );
   }
 
+  // Check if we are the group owners
   function areWeOwners() {
-    // Check if we are the group owners
-    return groupData?.owners.includes(toolDb.getAddress() || "") || false;
+    return (
+      state.groups[groupId]?.owners.includes(toolDb.getAddress() || "") || false
+    );
   }
 
+  useEffect(() => {
+    const listeners: number[] = [];
+    if (groupRoute) {
+      toolDb.getData<GroupData>(groupKey);
+
+      // Add listener for join requests
+      const requestsListenerId = toolDb.addKeyListener<MapChanges<string>[]>(
+        `requests-${groupId}`,
+        (msg) => {
+          joinRequests.current.mergeChanges(msg.v);
+          setRefresh(new Date().getTime());
+        }
+      );
+      listeners.push(requestsListenerId);
+      toolDb.subscribeData(`requests-${groupId}`);
+      toolDb.getCrdt(`requests-${groupId}`, joinRequests.current);
+    }
+
+    // Clear listeners
+    return () => {
+      listeners.forEach((id) => {
+        toolDb.removeKeyListener(id);
+      });
+    };
+  }, [groupRoute]);
+
+  const addMember = useCallback(
+    (id: string) => {
+      if (
+        state.groups[groupId] &&
+        groupRoute &&
+        !state.groups[groupId].members.includes(id)
+      ) {
+        const groupToAdd: GroupData = {
+          id: groupId,
+          name: state.groups[groupId].name,
+          owners: state.groups[groupId].owners,
+          members: [...state.groups[groupId].members, id],
+        };
+        toolDb.putData<GroupData>(groupKey, groupToAdd);
+        dispatch({
+          type: "SET_GROUP_DATA",
+          groupId: groupToAdd.id,
+          members: groupToAdd.members,
+          name: groupToAdd.name,
+          owners: groupToAdd.owners,
+        });
+      }
+    },
+    [groupRoute]
+  );
+
   const sendRequest = useCallback(() => {
-    if (toolDb.getAddress() && groupData && groupRoute) {
+    if (toolDb.getAddress() && state.groups[groupId] && groupRoute) {
       const address = toolDb.getAddress() || "";
 
       // Check if we already asked to join this group
@@ -172,43 +114,45 @@ export default function Group(props: GroupProps) {
         toolDb.putCrdt(`requests-${groupId}`, joinRequests.current, false);
 
         const newGroups = _.uniq([
-          ...state.groups,
-          `${groupData.id}-${groupData.name}`,
+          ...state.groupsList,
+          `${groupId}-${state.groups[groupId].name}`,
         ]);
-        toolDb.putData("groups", newGroups, true);
-        dispatch({ type: "setAllGroups", groups: newGroups });
+        toolDb.putData<GroupsList>("groups", newGroups, true);
+        dispatch({ type: "SET_ALL_GROUPS_LIST", groups: newGroups });
       }
     }
-  }, [joinRequests.current, state, groupData, groupRoute]);
+  }, [joinRequests.current, groupRoute, state]);
 
-  // Get all chats and sort them
-  let chats: Message[] = [];
+  let newChats: Message[] = [];
 
-  Object.keys(state.messages).forEach((id) => {
-    const arr = state.messages[id].map((m) => {
+  // Process this group's messages, blend together into one feed
+  const groupMessages = state.groups[groupId]?.messages || {};
+  Object.keys(groupMessages).forEach((id) => {
+    const arr = state.groups[groupId].messages[id].map((m) => {
       return {
         ...m,
         u: state.names[id],
       } as Message;
     });
-    chats = [...chats, ...arr];
+    newChats = [...newChats, ...arr];
   });
 
-  chats.sort((a, b) => a.t - b.t);
+  // Sort!
+  newChats.sort((a, b) => a.t - b.t);
 
   return (
     <>
-      {groupRoute && groupData ? (
+      {groupRoute && state.groups[groupId] ? (
         <>
           <div className="chat">
             <div className="chat-messages">
-              {chats.map((msg, i) => {
+              {newChats.map((msg, i) => {
                 return (
                   <ChatMessage
                     key={`chat-message-${i}`}
                     index={i}
                     message={msg}
-                    prevMessage={chats[i - 1]}
+                    prevMessage={newChats[i - 1]}
                   />
                 );
               })}
@@ -221,7 +165,7 @@ export default function Group(props: GroupProps) {
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  sendMessage(e.currentTarget.value);
+                  sendMessage(groupId, e.currentTarget.value);
                   setMessage("");
                 }
               }}
@@ -230,12 +174,16 @@ export default function Group(props: GroupProps) {
           <div className="members-list">
             <p>Members: </p>
             <div>
-              {_.uniq(groupData.members).map((id) => {
+              {_.uniq(state.groups[groupId].members).map((id) => {
                 return (
                   <div className="group-member" key={`group-member-${id}`}>
                     {state.names[id]}
                     <i>{toolDb.getAddress() === id ? "(you)" : ""}</i>
-                    <b>{groupData.owners.includes(id) ? " (admin)" : ""}</b>
+                    <b>
+                      {state.groups[groupId].owners.includes(id)
+                        ? " (admin)"
+                        : ""}
+                    </b>
                   </div>
                 );
               })}
@@ -244,7 +192,7 @@ export default function Group(props: GroupProps) {
                 <>
                   <p>Join requests: </p>
                   {Object.keys(joinRequests.current.value)
-                    .filter((id) => !groupData.members.includes(id))
+                    .filter((id) => !state.groups[groupId].members.includes(id))
                     .map((id) => {
                       const name = joinRequests.current.value[id];
                       return (

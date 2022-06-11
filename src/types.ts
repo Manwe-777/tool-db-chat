@@ -1,4 +1,4 @@
-// "group-{id}-{owner}-data" (GroupData)
+// "=={groupId}"
 export interface GroupData {
   owners: string[];
   id: string;
@@ -6,15 +6,27 @@ export interface GroupData {
   members: string[];
 }
 
-// :{address}.group-{id} (Message[])
+// :{address}.group-{groupId}
 export interface Message {
   m: string;
   t: number;
   u?: string;
 }
 
-export interface MessagesState {
-  names: Record<string, string>;
+// :{address}.groups
+export type GroupsList = string[];
+
+// Global State
+export interface GroupState {
+  name: string;
+  owners: string[]; // Array of owners
+  members: string[]; // Array of userIds
   messages: Record<string, Message[]>;
-  groups: string[];
+}
+
+export interface GlobalState {
+  names: Record<string, string>; // { userId: name }
+  publicKeys: Record<string, string>; // { userId: publicKey }
+  groups: Record<string, GroupState>; // { groupId: GroupState }
+  groupsList: string[];
 }
