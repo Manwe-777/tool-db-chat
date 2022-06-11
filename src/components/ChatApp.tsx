@@ -23,7 +23,7 @@ const initialState: GlobalState = {
 
 export default function ChatApp() {
   const [state, dispatch] = useReducer(reducer, initialState);
-  console.log(state);
+  // console.log(state);
   const toolDb = getToolDb();
 
   useEffect(() => {
