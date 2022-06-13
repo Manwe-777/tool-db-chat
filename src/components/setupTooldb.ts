@@ -9,7 +9,6 @@ export default function setupTooldb(dispatch: React.Dispatch<AllActions>) {
   const selfAddress = toolDb.getAddress() || "";
 
   // Maintain a little state here aside from the component
-  // groupKeys[groupId][userAddress] = key
   const wrappedGroups: string[] = [];
 
   function setGroupDataWrapper(groupData: GroupData) {
