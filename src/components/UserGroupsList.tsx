@@ -23,7 +23,7 @@ export default function UserGroupsList(props: GroupsListProps) {
   const createGroup = useCallback(() => {
     // Use the group name and our pubkey to get the hash/id
     // The group id will be unique for us, in case someone else creates a new group with the same name
-    const adress = toolDb.getAddress() || "";
+    const adress = toolDb.userAccount.getAddress() || "";
     const groupId = sha1(newGroupName + new Date().getTime() + adress);
     setNewGroupName("");
 
@@ -36,7 +36,7 @@ export default function UserGroupsList(props: GroupsListProps) {
         owners: [adress],
         name: newGroupName,
         id: groupId,
-        members: [toolDb.getAddress() || ""],
+        members: [toolDb.userAccount.getAddress() || ""],
       })
       .then((d) => {
         if (d) {

@@ -13,7 +13,8 @@ export default function WebRtcDebug() {
     }, 200);
   }, []);
 
-  const connectedPeers = Object.keys((toolDb.network as any).peerMap).length;
+  const peers = Object.keys(toolDb.network.clientToSend);
+  const connectedPeers = peers.length;
 
   return (
     <>
@@ -26,9 +27,9 @@ export default function WebRtcDebug() {
       <div className="debugger-list">
         <div style={{ color: "white" }}>Topic: {toolDb.options.topic}</div>
         <div style={{ color: "green" }}>
-          Peer ID: {toolDb.options.peerAccount.address.slice(-12)}
+          Peer ID: {toolDb.network.getClientAddress()}
         </div>
-        {Object.keys((toolDb.network as any).peerMap).map((key) => {
+        {peers.map((key) => {
           return (
             <div
               style={{
@@ -36,7 +37,7 @@ export default function WebRtcDebug() {
               }}
               key={key}
             >
-              {key.slice(-12)}
+              {key}
             </div>
           );
         })}

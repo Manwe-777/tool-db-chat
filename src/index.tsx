@@ -2,7 +2,7 @@
 import React from "react";
 import ReactDOM from "react-dom";
 import "./index.css";
-import { ToolDb, toolDbWebrtc, VerificationData } from "tool-db";
+import { ToolDb, ToolDbWebrtc, VerificationData } from "tool-db";
 
 import { HashRouter } from "react-router-dom";
 
@@ -14,9 +14,8 @@ import reportWebVitals from "./reportWebVitals";
 // Especially with hot module reloading while testing
 const db = new ToolDb({
   peers: [],
-  networkAdapter: toolDbWebrtc,
+  networkAdapter: ToolDbWebrtc,
   debug: true, //
-  topic: "testnetwork",
 });
 
 // A simple verificator to only allow insertions and not deletions

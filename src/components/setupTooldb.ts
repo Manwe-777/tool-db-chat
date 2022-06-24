@@ -6,7 +6,7 @@ import getToolDb from "../utils/getToolDb";
 
 export default function setupTooldb(dispatch: React.Dispatch<AllActions>) {
   const toolDb = getToolDb();
-  const selfAddress = toolDb.getAddress() || "";
+  const selfAddress = toolDb.userAccount.getAddress() || "";
 
   // Maintain a little state here aside from the component
   const wrappedGroups: string[] = [];

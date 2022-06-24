@@ -5,9 +5,8 @@ import _ from "lodash";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 
-import { MapCrdt } from "tool-db";
+import { MapCrdt, MapChanges } from "tool-db";
 
-import { MapChanges } from "tool-db/dist/crdt/mapCrdt";
 import ChatMessage from "./ChatMessage";
 import getToolDb from "../utils/getToolDb";
 import { GroupData, GlobalState, GroupsList, Message } from "../types";
@@ -29,7 +28,7 @@ export default function Group(props: GroupProps) {
   const groupId = decodeURIComponent(groupRoute || "");
 
   const joinRequests = useRef<MapCrdt<string>>(
-    new MapCrdt<string>(toolDb.getAddress() || "")
+    new MapCrdt<string>(toolDb.userAccount.getAddress() || "")
   );
 
   const [_refresh, setRefresh] = useState(0);
@@ -40,14 +39,16 @@ export default function Group(props: GroupProps) {
     return (
       joinRequests.current
         .getChanges()
-        .filter((ch) => ch.k === toolDb.getAddress()).length !== 0
+        .filter((ch) => ch.k === toolDb.userAccount.getAddress()).length !== 0
     );
   }
 
   // Check if we are the group owners
   function areWeOwners() {
     return (
-      state.groups[groupId]?.owners.includes(toolDb.getAddress() || "") || false
+      state.groups[groupId]?.owners.includes(
+        toolDb.userAccount.getAddress() || ""
+      ) || false
     );
   }
 
@@ -104,12 +105,19 @@ export default function Group(props: GroupProps) {
   );
 
   const sendRequest = useCallback(() => {
-    if (toolDb.getAddress() && state.groups[groupId] && groupRoute) {
-      const address = toolDb.getAddress() || "";
+    if (
+      toolDb.userAccount.getAddress() &&
+      state.groups[groupId] &&
+      groupRoute
+    ) {
+      const address = toolDb.userAccount.getAddress() || "";
 
       // Check if we already asked to join this group
       if (checkIfWeJoined() === false) {
-        joinRequests.current.SET(address, toolDb.getUsername() || "");
+        joinRequests.current.SET(
+          address,
+          toolDb.userAccount.getUsername() || ""
+        );
 
         toolDb.putCrdt(`requests-${groupId}`, joinRequests.current, false);
 
@@ -178,7 +186,9 @@ export default function Group(props: GroupProps) {
                 return (
                   <div className="group-member" key={`group-member-${id}`}>
                     {state.names[id]}
-                    <i>{toolDb.getAddress() === id ? "(you)" : ""}</i>
+                    <i>
+                      {toolDb.userAccount.getAddress() === id ? "(you)" : ""}
+                    </i>
                     <b>
                       {state.groups[groupId].owners.includes(id)
                         ? " (admin)"

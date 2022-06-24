@@ -10,7 +10,6 @@ import Group from "./Group";
 
 import reducer from "../state/reducer";
 import getToolDb from "../utils/getToolDb";
-import getPublicKey from "../utils/getPublicKey";
 
 import setupTooldb from "./setupTooldb";
 
@@ -27,17 +26,12 @@ export default function ChatApp() {
   const toolDb = getToolDb();
 
   useEffect(() => {
-    const addr = toolDb.getAddress();
+    const addr = toolDb.userAccount.getAddress();
     if (addr) {
-      dispatch({
-        type: "SET_USER_PUBKEY",
-        userId: addr,
-        pubKey: getPublicKey(),
-      });
       dispatch({
         type: "SET_USER_NAME",
         userId: addr,
-        username: toolDb.getUsername() || "",
+        username: toolDb.userAccount.getUsername() || "",
       });
     }
     setupTooldb(dispatch);
@@ -45,7 +39,7 @@ export default function ChatApp() {
 
   const sendMessage = useCallback(
     async (groupId: string, msg: string) => {
-      const address = toolDb.getAddress() || "";
+      const address = toolDb.userAccount.getAddress() || "";
 
       if (!state.groups[groupId]) return;
       if (!state.groups[groupId].members.includes(address)) return;
