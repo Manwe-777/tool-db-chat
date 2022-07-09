@@ -2,19 +2,23 @@
 import React from "react";
 import ReactDOM from "react-dom";
 import "./index.css";
-import { ToolDb, ToolDbWebrtc, VerificationData } from "tool-db";
+import { ToolDb, VerificationData, MapChanges } from "tool-db";
 
 import { HashRouter } from "react-router-dom";
 
-import { MapChanges } from "tool-db/dist/crdt/mapCrdt";
-import App from "./components/App";
+import ToolDbEcdsaUser from "@tool-db/ecdsa-user";
+import ToolDbWebrtc from "@tool-db/webrtc-network";
+import ToolDbIndexedb from "@tool-db/indexeddb-store";
 import reportWebVitals from "./reportWebVitals";
+import App from "./components/App";
 
 // Initialize tooldb outside of react to avoid unpleasant side effects
 // Especially with hot module reloading while testing
 const db = new ToolDb({
   peers: [],
-  networkAdapter: ToolDbWebrtc,
+  userAdapter: ToolDbEcdsaUser,
+  networkAdapter: ToolDbWebrtc as any,
+  storageAdapter: ToolDbIndexedb as any,
   debug: true, //
 });
 
