@@ -16,7 +16,7 @@ import App from "./components/App";
 // Especially with hot module reloading while testing
 const db = new ToolDb({
   peers: [],
-  userAdapter: ToolDbEcdsaUser,
+  userAdapter: ToolDbEcdsaUser as any,
   networkAdapter: ToolDbWebrtc as any,
   storageAdapter: ToolDbIndexedb as any,
   debug: true, //
