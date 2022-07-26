@@ -1,9 +1,11 @@
+/* eslint-disable import/no-extraneous-dependencies */
+/* eslint-disable no-param-reassign */
 const webpack = require("webpack");
 
-module.exports = function override(config, env) {
+module.exports = function override(config, _env) {
   config.resolve.fallback = {
     url: require.resolve("url"),
-    fs: require.resolve("fs"),
+    fs: false,
     assert: require.resolve("assert"),
     crypto: require.resolve("crypto-browserify"),
     zlib: require.resolve("browserify-zlib"),
@@ -12,7 +14,9 @@ module.exports = function override(config, env) {
     os: require.resolve("os-browserify/browser"),
     buffer: require.resolve("buffer"),
     stream: require.resolve("stream-browserify"),
+    path: require.resolve("path-browserify"),
   };
+
   config.plugins.push(
     new webpack.ProvidePlugin({
       process: "process/browser",

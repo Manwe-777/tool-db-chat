@@ -16,7 +16,7 @@ import App from "./components/App";
 // Especially with hot module reloading while testing
 const db = new ToolDb({
   peers: [],
-  userAdapter: ToolDbEcdsaUser as any,
+  userAdapter: ToolDbEcdsaUser,
   networkAdapter: ToolDbWebrtc as any,
   storageAdapter: ToolDbIndexedb as any,
   debug: true, //
@@ -36,11 +36,29 @@ function requestsVerificator(
   });
 }
 
+// A simple verificator to only allow insertions and not deletions
+function ownedMapVerificator(
+  msg: VerificationData<MapChanges<string>[]>
+): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    let isValid = true;
+    // Iterate over the crdt changes to find deletions, if any
+    msg.v.forEach((ch) => {
+      if (ch.a !== ch.k) isValid = false;
+      if (msg.a !== ch.k) isValid = false;
+      if (ch.t === "DEL") isValid = false;
+    });
+    resolve(isValid);
+  });
+}
+
 // // Apply to all keys starting with "group-"
 db.addCustomVerification<MapChanges<string>[]>(
   "requests-",
   requestsVerificator
 );
+
+db.addCustomVerification<MapChanges<string>[]>("index-", ownedMapVerificator);
 
 // Just for devtools/debugging
 (window as any).toolDb = db;
